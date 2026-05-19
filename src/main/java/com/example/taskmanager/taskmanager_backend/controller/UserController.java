@@ -1,64 +1,65 @@
 package com.example.taskmanager.taskmanager_backend.controller;
 
 import com.example.taskmanager.taskmanager_backend.dto.UserResponse;
-import com.example.taskmanager.taskmanager_backend.entity.Designation;
+
 import com.example.taskmanager.taskmanager_backend.entity.User;
-import com.example.taskmanager.taskmanager_backend.repository.UserRepository;
+
+import com.example.taskmanager.taskmanager_backend.service.UserService;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
+
 @RequestMapping("/users")
+
 public class UserController {
 
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService;
+
+    // =========================================
+    // GET ALL USERS
+    // =========================================
 
     @GetMapping
+
     public List<UserResponse> getUsers() {
 
-        return userRepository.findAll()
-
-                .stream()
-
-                .map(user -> UserResponse.builder()
-
-                        .id(user.getId())
-
-                        .name(user.getName())
-
-                        .email(user.getEmail())
-
-                        .designation(user.getDesignation())
-
-                        .build()
-
-                )
-
-                .toList();
+        return userService.getUsers();
     }
+
+    // =========================================
+    // GET DESIGNATIONS
+    // =========================================
 
     @GetMapping("/designations")
+
     public List<String> getDesignations() {
 
-        return Arrays.stream(Designation.values())
-                .map(Enum::name)
-                .toList();
+        return userService.getDesignations();
     }
 
-    @GetMapping("/by-designation/{designation}")
+    // =========================================
+    // USERS BY DESIGNATION
+    // =========================================
+
+    @GetMapping(
+            "/by-designation/{designation}"
+    )
 
     public List<User> getUsersByDesignation(
-            @PathVariable Designation designation
+
+            @PathVariable String designation
+
     ) {
 
-        return userRepository.findByDesignation(designation);
-
+        return userService
+                .getUsersByDesignation(
+                        designation
+                );
     }
-
 }

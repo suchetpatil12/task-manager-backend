@@ -1,5 +1,6 @@
 package com.example.taskmanager.taskmanager_backend.controller;
 
+import com.example.taskmanager.taskmanager_backend.dto.PagedResponse;
 import com.example.taskmanager.taskmanager_backend.dto.TaskRequest;
 import com.example.taskmanager.taskmanager_backend.dto.TaskResponse;
 import com.example.taskmanager.taskmanager_backend.entity.Status;
@@ -10,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 
 import org.springframework.security.access.prepost.PreAuthorize;
-
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -101,7 +102,7 @@ public class TaskController {
     // ✅ GET TASKS BY PROJECT WITH PAGINATION
     @PreAuthorize("hasAnyRole('ADMIN','MEMBER')")
     @GetMapping("/project/{projectId}")
-    public Page<TaskResponse> getTasksByProject(
+    public PagedResponse<TaskResponse> getTasksByProject(
 
             @PathVariable Long projectId,
 
@@ -123,7 +124,7 @@ public class TaskController {
 
     @GetMapping("/search/{projectId}")
 
-    public Page<TaskResponse> searchTasks(
+    public PagedResponse<TaskResponse> searchTasks(
 
             @PathVariable Long projectId,
 

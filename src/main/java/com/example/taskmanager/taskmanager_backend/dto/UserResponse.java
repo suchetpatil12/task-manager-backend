@@ -1,7 +1,5 @@
 package com.example.taskmanager.taskmanager_backend.dto;
 
-import com.example.taskmanager.taskmanager_backend.entity.Designation;
-
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,5 +13,6 @@ public class UserResponse {
 
     private String email;
 
-    private Designation designation;
+    private String designation;
+
 }

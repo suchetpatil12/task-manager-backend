@@ -18,6 +18,7 @@ public class RefreshTokenService {
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+    @Transactional(readOnly = true)
     public Optional<RefreshToken> findByToken(String token) {
         return refreshTokenRepository.findByToken(token);
     }
@@ -34,7 +35,11 @@ public class RefreshTokenService {
 
         refreshToken.setUser(user);
         refreshToken.setToken(UUID.randomUUID().toString());
-        refreshToken.setExpiryDate(Instant.now().plusMillis(86400000)); // 1 day
+        refreshToken.setExpiryDate(
+                Instant.now().plusSeconds(
+                        REFRESH_TOKEN_DURATION
+                )
+        ); // 1 day
 
         return refreshTokenRepository.save(refreshToken);
     }

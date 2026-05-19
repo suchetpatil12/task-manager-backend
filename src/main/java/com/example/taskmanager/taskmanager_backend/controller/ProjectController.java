@@ -1,81 +1,235 @@
 package com.example.taskmanager.taskmanager_backend.controller;
 
+import com.example.taskmanager.taskmanager_backend.dto.PagedResponse;
+import com.example.taskmanager.taskmanager_backend.dto.ProjectResponse;
+import com.example.taskmanager.taskmanager_backend.dto.UserResponse;
+
 import com.example.taskmanager.taskmanager_backend.entity.Project;
-import com.example.taskmanager.taskmanager_backend.entity.User;
-import com.example.taskmanager.taskmanager_backend.repository.ProjectRepository;
-import com.example.taskmanager.taskmanager_backend.repository.UserRepository;
+
 import com.example.taskmanager.taskmanager_backend.service.ProjectService;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/projects")
+
+@CrossOrigin("*")
+
 public class ProjectController {
-
-    @Autowired
-    private ProjectRepository projectRepository;
-
-    @Autowired
-    private UserRepository userRepository;
 
     @Autowired
     private ProjectService projectService;
 
-    // ✅ CREATE PROJECT (ADMIN ONLY)
+    // =========================================
+    // CREATE PROJECT
+    // =========================================
+
     @PostMapping
+
     @PreAuthorize("hasRole('ADMIN')")
-    public Project createProject(@RequestBody Project project,
-                                 @AuthenticationPrincipal UserDetails userDetails) {
 
-        // 🔥 Get logged-in user
-        String email = userDetails.getUsername();
+    public ProjectResponse createProject(
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            @RequestBody Project project,
 
-        // 🔥 Set owner from JWT (NOT from request)
-        project.setCreatedBy(user);
+            @AuthenticationPrincipal
+            UserDetails userDetails
 
-        return projectRepository.save(project);
+    ) {
+
+        return projectService.createProject(
+
+                project,
+
+                userDetails.getUsername()
+
+        );
     }
 
-    // ✅ GET ALL PROJECTS (ANY LOGGED-IN USER)
+    // =========================================
+    // GET ALL PROJECTS WITH PAGINATION
+    // =========================================
+
     @GetMapping
-    public List<Project> getAllProjects() {
-        return projectRepository.findAll();
+
+    public PagedResponse<ProjectResponse> getAllProjects(
+
+            @RequestParam(defaultValue = "0")
+            int page,
+
+            @RequestParam(defaultValue = "5")
+            int size
+
+    ) {
+
+        return projectService.getAllProjects(
+                page,
+                size
+        );
     }
 
-    // ✅ UPDATE PROJECT (OWNER OR ADMIN)
+    // =========================================
+    // UPDATE PROJECT
+    // =========================================
+
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @projectService.isOwner(#id, authentication.name)")
-    public Project updateProject(@PathVariable Long id,
-                                 @RequestBody Project updatedProject) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+    @PreAuthorize(
+            "hasRole('ADMIN') or " +
+                    "@projectService.isOwner(#id, authentication.name)"
+    )
 
-        project.setName(updatedProject.getName());
-        project.setDescription(updatedProject.getDescription());
+    public ProjectResponse updateProject(
 
-        return projectRepository.save(project);
+            @PathVariable Long id,
+
+            @RequestBody Project updatedProject
+
+    ) {
+
+        return projectService.updateProject(
+                id,
+                updatedProject
+        );
     }
 
-    // ✅ DELETE PROJECT (OWNER OR ADMIN)
+    // =========================================
+    // DELETE PROJECT
+    // =========================================
+
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @projectService.isOwner(#id, authentication.name)")
-    public String deleteProject(@PathVariable Long id) {
 
-        Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+    @PreAuthorize(
+            "hasRole('ADMIN') or " +
+                    "@projectService.isOwner(#id, authentication.name)"
+    )
 
-        projectRepository.delete(project);
+    public String deleteProject(
+            @PathVariable Long id
+    ) {
 
-        return "Project deleted successfully";
+        return projectService.deleteProject(id);
+    }
+
+    // =========================================
+    // GET PROJECT MEMBERS
+    // =========================================
+
+    @GetMapping("/{id}/members")
+
+    public java.util.List<UserResponse> getProjectMembers(
+            @PathVariable Long id
+    ) {
+
+        return projectService.getProjectMembers(id);
+    }
+
+    // =========================================
+    // ADD MEMBER
+    // =========================================
+
+    @PostMapping("/{projectId}/members/{userId}")
+
+    @PreAuthorize("hasRole('ADMIN')")
+
+    public ProjectResponse addMember(
+
+            @PathVariable Long projectId,
+
+            @PathVariable Long userId
+
+    ) {
+
+        return projectService.addMember(
+                projectId,
+                userId
+        );
+    }
+
+    // =========================================
+    // REMOVE MEMBER
+    // =========================================
+
+    @DeleteMapping(
+            "/{projectId}/members/{userId}"
+    )
+
+    @PreAuthorize("hasRole('ADMIN')")
+
+    public ProjectResponse removeMember(
+
+            @PathVariable Long projectId,
+
+            @PathVariable Long userId
+
+    ) {
+
+        return projectService.removeMember(
+                projectId,
+                userId
+        );
+    }
+
+    // =========================================
+    // GET MEMBERS BY DESIGNATION
+    // =========================================
+
+    @GetMapping(
+            "/{projectId}/members/by-designation"
+    )
+
+    public java.util.List<UserResponse> getMembersByDesignation(
+
+            @PathVariable Long projectId,
+
+            @RequestParam String designation
+
+    ) {
+
+        return projectService.getMembersByDesignation(
+
+                projectId,
+
+                designation
+
+        );
+    }
+
+    // =========================================
+// SEARCH PROJECTS
+// =========================================
+
+    @GetMapping("/search")
+    public Page<ProjectResponse> searchProjects(
+
+            @RequestParam(defaultValue = "")
+            String keyword,
+
+            @RequestParam(defaultValue = "0")
+            int page,
+
+            @RequestParam(defaultValue = "5")
+            int size
+
+    ) {
+
+        return projectService.searchProjects(
+
+                keyword,
+
+                page,
+
+                size
+
+        );
+
     }
 }

@@ -1,5 +1,6 @@
 package com.example.taskmanager.taskmanager_backend.service;
 
+import com.example.taskmanager.taskmanager_backend.dto.PagedResponse;
 import com.example.taskmanager.taskmanager_backend.dto.TaskRequest;
 import com.example.taskmanager.taskmanager_backend.dto.TaskResponse;
 
@@ -11,6 +12,7 @@ import com.example.taskmanager.taskmanager_backend.entity.User;
 import com.example.taskmanager.taskmanager_backend.repository.ProjectRepository;
 import com.example.taskmanager.taskmanager_backend.repository.TaskRepository;
 import com.example.taskmanager.taskmanager_backend.repository.UserRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.taskmanager.taskmanager_backend.util.SecurityUtil;
 
@@ -80,6 +82,7 @@ public class TaskService {
     // GET ALL TASKS
     // =========================
 
+    @Transactional(readOnly = true)
     public List<TaskResponse> getAllTasks() {
 
         return taskRepository.findAll()
@@ -94,7 +97,7 @@ public class TaskService {
     // =========================
     // GET TASK BY ID
     // =========================
-
+    @Transactional(readOnly = true)
     public TaskResponse getTaskById(Long id) {
 
         Task task = taskRepository
@@ -160,13 +163,22 @@ public class TaskService {
 
     public void deleteTask(Long id) {
 
-        taskRepository.deleteById(id);
+        Task task = taskRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Task not found"
+                        )
+                );
+
+        taskRepository.delete(task);
     }
 
     // =========================
     // SECURITY CHECK
     // =========================
 
+    @Transactional(readOnly = true)
     public boolean isAssigned(
             Long taskId,
             String email
@@ -185,6 +197,7 @@ public class TaskService {
                         .equals(email);
     }
 
+    @Transactional(readOnly = true)
     public boolean isProjectOwner(
             Long taskId,
             String email
@@ -206,10 +219,15 @@ public class TaskService {
     // GET TASKS BY PROJECT
     // =========================
 
-    public Page<TaskResponse> getTasksByProject(
+    @Transactional(readOnly = true)
+    public PagedResponse<TaskResponse> getTasksByProject(
+
             Long projectId,
+
             int page,
+
             int size
+
     ) {
 
         Pageable pageable =
@@ -221,7 +239,9 @@ public class TaskService {
         User currentUser = userRepository
                 .findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found")
+                        new RuntimeException(
+                                "User not found"
+                        )
                 );
 
         Page<Task> tasks;
@@ -250,14 +270,41 @@ public class TaskService {
                     );
         }
 
-        return tasks.map(this::mapToResponse);
+        return PagedResponse.<TaskResponse>builder()
+
+                .content(
+                        tasks.getContent()
+
+                                .stream()
+
+                                .map(this::mapToResponse)
+
+                                .toList()
+                )
+
+                .page(tasks.getNumber())
+
+                .size(tasks.getSize())
+
+                .totalElements(
+                        tasks.getTotalElements()
+                )
+
+                .totalPages(
+                        tasks.getTotalPages()
+                )
+
+                .last(tasks.isLast())
+
+                .build();
     }
 
     // =========================
     // SEARCH TASKS
     // =========================
 
-    public Page<TaskResponse> searchTasks(
+    @Transactional(readOnly = true)
+    public PagedResponse<TaskResponse> searchTasks(
 
             Long projectId,
 
@@ -276,7 +323,7 @@ public class TaskService {
 
         Page<Task> tasks;
 
-        // ✅ BOTH KEYWORD + STATUS
+        // BOTH KEYWORD + STATUS
 
         if (keyword != null
                 && !keyword.isEmpty()
@@ -293,7 +340,7 @@ public class TaskService {
                             );
         }
 
-        // ✅ ONLY STATUS
+        // ONLY STATUS
 
         else if (status != null
                 && !status.isEmpty()) {
@@ -307,7 +354,7 @@ public class TaskService {
                             );
         }
 
-        // ✅ ONLY KEYWORD
+        // ONLY KEYWORD
 
         else if (keyword != null
                 && !keyword.isEmpty()) {
@@ -321,7 +368,7 @@ public class TaskService {
                             );
         }
 
-        // ✅ NO FILTER
+        // NO FILTER
 
         else {
 
@@ -333,7 +380,33 @@ public class TaskService {
                             );
         }
 
-        return tasks.map(this::mapToResponse);
+        return PagedResponse.<TaskResponse>builder()
+
+                .content(
+                        tasks.getContent()
+
+                                .stream()
+
+                                .map(this::mapToResponse)
+
+                                .toList()
+                )
+
+                .page(tasks.getNumber())
+
+                .size(tasks.getSize())
+
+                .totalElements(
+                        tasks.getTotalElements()
+                )
+
+                .totalPages(
+                        tasks.getTotalPages()
+                )
+
+                .last(tasks.isLast())
+
+                .build();
     }
 
     // =========================
@@ -367,7 +440,6 @@ public class TaskService {
                 .assignedUserDesignation(
                         task.getAssignedTo()
                                 .getDesignation()
-                                .name()
                 )
 
                 .build();
