@@ -16,4 +16,11 @@ public class ProjectResponse {
     private String createdBy;
 
     private int totalMembers;
+
+    private long totalTasks;
+
+    private long completedTasks;
+
+    private double progressPercentage;
+
 }

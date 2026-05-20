@@ -38,6 +38,9 @@ public class TaskService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ActivityService activityService;
+
     // =========================
     // CREATE TASK
     // =========================
@@ -74,6 +77,20 @@ public class TaskService {
         task.setAssignedTo(assignedUser);
 
         Task savedTask = taskRepository.save(task);
+
+// SAVE ACTIVITY
+
+        activityService.saveActivity(
+
+                "📝",
+
+                "Created Task",
+
+                savedTask.getTitle(),
+
+                SecurityUtil.getCurrentUserEmail()
+
+        );
 
         return mapToResponse(savedTask);
     }
@@ -154,6 +171,20 @@ public class TaskService {
         Task updatedTask =
                 taskRepository.save(task);
 
+// SAVE ACTIVITY
+
+        activityService.saveActivity(
+
+                "✏️",
+
+                "Updated Task",
+
+                updatedTask.getTitle(),
+
+                SecurityUtil.getCurrentUserEmail()
+
+        );
+
         return mapToResponse(updatedTask);
     }
 
@@ -171,7 +202,23 @@ public class TaskService {
                         )
                 );
 
+        String taskTitle = task.getTitle();
+
         taskRepository.delete(task);
+
+// SAVE ACTIVITY
+
+        activityService.saveActivity(
+
+                "🗑️",
+
+                "Deleted Task",
+
+                taskTitle,
+
+                SecurityUtil.getCurrentUserEmail()
+
+        );
     }
 
     // =========================

@@ -5,16 +5,21 @@ import com.example.taskmanager.taskmanager_backend.dto.ProjectResponse;
 import com.example.taskmanager.taskmanager_backend.dto.UserResponse;
 
 import com.example.taskmanager.taskmanager_backend.entity.Project;
+import com.example.taskmanager.taskmanager_backend.entity.Status;
 import com.example.taskmanager.taskmanager_backend.entity.User;
 
 import com.example.taskmanager.taskmanager_backend.repository.ProjectRepository;
+import com.example.taskmanager.taskmanager_backend.repository.TaskRepository;
 import com.example.taskmanager.taskmanager_backend.repository.UserRepository;
+
+import com.example.taskmanager.taskmanager_backend.util.SecurityUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +34,12 @@ public class ProjectService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
+    private ActivityService activityService;
 
     // =========================================
     // CREATE PROJECT
@@ -51,16 +62,26 @@ public class ProjectService {
                                 )
                         );
 
-        // SET OWNER
-
         project.setCreatedBy(user);
-
-        // ADD OWNER AS MEMBER
 
         project.getMembers().add(user);
 
         Project savedProject =
                 projectRepository.save(project);
+
+        // SAVE ACTIVITY
+
+        activityService.saveActivity(
+
+                "📁",
+
+                "Created Project",
+
+                savedProject.getName(),
+
+                email
+
+        );
 
         return mapToProjectResponse(savedProject);
     }
@@ -116,8 +137,8 @@ public class ProjectService {
     }
 
     // =========================================
-// SEARCH PROJECTS
-// =========================================
+    // SEARCH PROJECTS
+    // =========================================
 
     @Transactional(readOnly = true)
     public Page<ProjectResponse> searchProjects(
@@ -155,7 +176,7 @@ public class ProjectService {
 
         }
 
-        return projects.map(this::mapToResponse);
+        return projects.map(this::mapToProjectResponse);
 
     }
 
@@ -189,6 +210,20 @@ public class ProjectService {
         Project savedProject =
                 projectRepository.save(project);
 
+        // SAVE ACTIVITY
+
+        activityService.saveActivity(
+
+                "✏️",
+
+                "Updated Project",
+
+                savedProject.getName(),
+
+                SecurityUtil.getCurrentUserEmail()
+
+        );
+
         return mapToProjectResponse(savedProject);
     }
 
@@ -207,7 +242,23 @@ public class ProjectService {
                                 )
                         );
 
+        String projectName = project.getName();
+
         projectRepository.delete(project);
+
+        // SAVE ACTIVITY
+
+        activityService.saveActivity(
+
+                "🗑️",
+
+                "Deleted Project",
+
+                projectName,
+
+                SecurityUtil.getCurrentUserEmail()
+
+        );
 
         return "Project deleted successfully";
     }
@@ -287,6 +338,20 @@ public class ProjectService {
 
         Project savedProject =
                 projectRepository.save(project);
+
+        // SAVE ACTIVITY
+
+        activityService.saveActivity(
+
+                "👥",
+
+                "Added Member",
+
+                user.getName(),
+
+                SecurityUtil.getCurrentUserEmail()
+
+        );
 
         return mapToProjectResponse(savedProject);
     }
@@ -395,33 +460,6 @@ public class ProjectService {
     }
 
     // =========================================
-    // PROJECT DTO MAPPER
-    // =========================================
-
-    private ProjectResponse mapToProjectResponse(
-            Project project
-    ) {
-
-        return ProjectResponse.builder()
-
-                .id(project.getId())
-
-                .name(project.getName())
-
-                .description(project.getDescription())
-
-                .createdBy(
-                        project.getCreatedBy().getName()
-                )
-
-                .totalMembers(
-                        project.getMembers().size()
-                )
-
-                .build();
-    }
-
-    // =========================================
     // USER DTO MAPPER
     // =========================================
 
@@ -445,12 +483,31 @@ public class ProjectService {
     }
 
     // =========================================
-// DTO MAPPER
-// =========================================
+    // PROJECT DTO MAPPER
+    // =========================================
 
-    private ProjectResponse mapToResponse(
+    private ProjectResponse mapToProjectResponse(
             Project project
     ) {
+
+        long totalTasks =
+                taskRepository.countByProjectId(
+                        project.getId()
+                );
+
+        long completedTasks =
+                taskRepository.countByProjectIdAndStatus(
+                        project.getId(),
+                        Status.DONE
+                );
+
+        double progressPercentage =
+                totalTasks == 0
+
+                        ? 0
+
+                        : ((double) completedTasks
+                        / totalTasks) * 100;
 
         return ProjectResponse.builder()
 
@@ -471,7 +528,6 @@ public class ProjectService {
                                 :
 
                                 null
-
                 )
 
                 .totalMembers(
@@ -485,10 +541,14 @@ public class ProjectService {
                                 :
 
                                 0
-
                 )
 
-                .build();
+                .totalTasks(totalTasks)
 
+                .completedTasks(completedTasks)
+
+                .progressPercentage(progressPercentage)
+
+                .build();
     }
 }
